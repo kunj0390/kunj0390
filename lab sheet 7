@@ -1,0 +1,239 @@
+#include <iostream>
+#include <vector>
+#include <queue>
+#include <climits>
+#include <stack>
+#include <map>
+#include <set>
+#include <algorithm>
+using namespace std;
+// AVL Tree Implementation for Managing Affected Areas
+class AVLTree {
+private:
+    struct Node {
+        string data;
+        Node* left;
+        Node* right;
+        int height;
+        Node(string data) : data(data), left(nullptr), right(nullptr), height(1) {}
+    };
+    Node* root;
+    int height(Node* node) {
+        return node ? node->height : 0;
+    }
+    int balanceFactor(Node* node) {
+        return height(node->left) - height(node->right);
+    }
+    Node* rotateRight(Node* y) {
+        Node* x = y->left;
+        Node* T2 = x->right;
+        x->right = y;
+        y->left = T2;
+        y->height = max(height(y->left), height(y->right)) + 1;
+        x->height = max(height(x->left), height(x->right)) + 1;
+        return x;
+    }
+    Node* rotateLeft(Node* x) {
+        Node* y = x->right;
+        Node* T2 = y->left;
+        y->left = x;
+        x->right = T2;
+        x->height = max(height(x->left), height(x->right)) + 1;
+        y->height = max(height(y->left), height(y->right)) + 1;
+        return y;
+    }
+    Node* balance(Node* node) {
+        int balance = balanceFactor(node);
+        if (balance > 1) {
+            if (balanceFactor(node->left) < 0) {
+                node->left = rotateLeft(node->left);
+            }
+            return rotateRight(node);
+        }
+        if (balance < -1) {
+            if (balanceFactor(node->right) > 0) {
+                node->right = rotateRight(node->right);
+            }
+            return rotateLeft(node);
+        }
+        return node;
+    }
+    Node* insert(Node* node, const string& data) {
+        if (!node) return new Node(data);
+        if (data < node->data)
+            node->left = insert(node->left, data);
+        else if (data > node->data)
+            node->right = insert(node->right, data);
+        else
+            return node; // duplicate data not allowed
+        node->height = 1 + max(height(node->left), height(node->right));
+        return balance(node);
+    }
+    void inOrder(Node* node, vector<string>& result) {
+        if (node) {
+            inOrder(node->left, result);
+            result.push_back(node->data);
+            inOrder(node->right, result);
+        }
+    }
+public:
+    AVLTree() : root(nullptr) {}
+    void insert(const string& data) {
+        root = insert(root, data);
+    }
+    vector<string> inOrderTraversal() {
+        vector<string> result;
+        inOrder(root, result);
+        return result;
+    }
+};
+// Graph Implementation for Disaster Response Management
+class Graph {
+private:
+    map<string, vector<pair<string, int>>> adjList;
+public:
+    void addEdge(const string& u, const string& v, int weight) {
+        adjList[u].push_back({v, weight});
+        adjList[v].push_back({u, weight}); // for undirected graph
+    }
+    void BFS(const string& start) {
+        set<string> visited;
+        queue<string> q;
+        visited.insert(start);
+        q.push(start);
+        while (!q.empty()) {
+            string node = q.front();
+            q.pop();
+            cout << node << " ";
+            for (auto& neighbor : adjList[node]) {
+                if (visited.find(neighbor.first) == visited.end()) {
+                    visited.insert(neighbor.first);
+                    q.push(neighbor.first);
+                }
+            }
+        }
+        cout << endl;
+    }
+    void DFS(const string& start) {
+        set<string> visited;
+        stack<string> s;
+        s.push(start);
+        while (!s.empty()) {
+            string node = s.top();
+            s.pop();
+            if (visited.find(node) == visited.end()) {
+                visited.insert(node);
+                cout << node << " ";
+                for (auto& neighbor : adjList[node]) {
+                    if (visited.find(neighbor.first) == visited.end()) {
+                        s.push(neighbor.first);
+                    }
+                }
+            }
+        }
+        cout << endl;
+    }
+    vector<string> dijkstra(const string& source, const string& target) {
+        map<string, int> dist;
+        map<string, string> parent;
+        set<string> visited;
+        priority_queue<pair<int, string>, vector<pair<int, string>>, greater<pair<int, string>>> pq;
+        for (const auto& node : adjList) {
+            dist[node.first] = INT_MAX;
+        }
+        dist[source] = 0;
+        pq.push({0, source});
+        while (!pq.empty()) {
+            string node = pq.top().second;
+            pq.pop();
+            if (visited.find(node) != visited.end()) continue;
+            visited.insert(node);
+            for (auto& neighbor : adjList[node]) {
+                string neighborNode = neighbor.first;
+                int weight = neighbor.second;
+                if (dist[node] + weight < dist[neighborNode]) {
+                    dist[neighborNode] = dist[node] + weight;
+                    parent[neighborNode] = node;
+                    pq.push({dist[neighborNode], neighborNode});
+                }
+            }
+        }
+        vector<string> path;
+        string node = target;
+        while (parent.find(node) != parent.end()) {
+            path.push_back(node);
+            node = parent[node];
+        }
+        path.push_back(source);
+        reverse(path.begin(), path.end());
+        return path;
+    }
+    vector<string> primMST() {
+        set<string> visited;
+        priority_queue<pair<int, pair<string, string>>, vector<pair<int, pair<string, string>>>, greater<pair<int, pair<string, string>>>> pq;
+        vector<string> mst;
+        for (auto& node : adjList) {
+            if (visited.find(node.first) == visited.end()) {
+                visited.insert(node.first);
+                for (auto& neighbor : node.second) {
+                    pq.push({neighbor.second, {node.first, neighbor.first}});
+                }
+                while (!pq.empty()) {
+                    auto edge = pq.top();
+                    pq.pop();
+                    string u = edge.second.first;
+                    string v = edge.second.second;
+                    int weight = edge.first;
+                    if (visited.find(v) == visited.end()) {
+                        visited.insert(v);
+                        mst.push_back(u + "-" + v);
+                        for (auto& neighbor : adjList[v]) {
+                            if (visited.find(neighbor.first) == visited.end()) {
+                                pq.push({neighbor.second, {v, neighbor.first}});
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return mst;
+    }
+};
+// Main Function to Simulate the System
+int main() {
+    AVLTree tree;
+    Graph graph;
+    // Example 1: Insert regions into AVL Tree
+    tree.insert("Region1");
+    tree.insert("Region2");
+    tree.insert("Region3");
+    vector<string> treeResult = tree.inOrderTraversal();
+    cout << "AVL Tree In-Order Traversal: ";
+    for (const string& region : treeResult) {
+        cout << region << " ";
+    }
+    cout << endl;
+    // Example 2: Graph BFS Traversal
+    graph.addEdge("A", "B", 1);
+    graph.addEdge("A", "C", 2);
+    graph.addEdge("B", "D", 1);
+    cout << "Graph BFS Traversal from A: ";
+    graph.BFS("A");
+    // Example 3: Graph Dijkstra's Algorithm
+    graph.addEdge("A", "B", 1);
+    graph.addEdge("B", "C", 2);
+    graph.addEdge("A", "C", 4);
+    vector<string> dijkstraResult = graph.dijkstra("A", "C");
+    cout << "Dijkstra's Shortest Path from A to C: ";
+    for (const string& node : dijkstraResult) {
+        cout << node << " ";
+    }
+    cout << endl;
+    // Example 4: Graph Prim's Algorithm
+    vector<string> mst = graph.primMST();
+    cout << "Prim's Minimum Spanning Tree: ";
+    for (const string& edge : mst) {
+        cout << edge << " ";
+    }
+    cout << endl;
+    return 
